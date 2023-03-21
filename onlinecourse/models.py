@@ -5,11 +5,8 @@ try:
 except Exception:
     print("There was an error loading django modules. Do you have django installed?")
     sys.exit()
-
 from django.conf import settings
 import uuid
-
-
 # Instructor model
 class Instructor(models.Model):
     user = models.ForeignKey(
@@ -18,11 +15,8 @@ class Instructor(models.Model):
     )
     full_time = models.BooleanField(default=True)
     total_learners = models.IntegerField()
-
     def __str__(self):
         return self.user.username
-
-
 # Learner model
 class Learner(models.Model):
     user = models.ForeignKey(
@@ -46,12 +40,9 @@ class Learner(models.Model):
         default=STUDENT
     )
     social_link = models.URLField(max_length=200)
-
     def __str__(self):
         return self.user.username + "," + \
                self.occupation
-
-
 # Course model
 class Course(models.Model):
     name = models.CharField(null=False, max_length=30, default='online course')
@@ -62,20 +53,15 @@ class Course(models.Model):
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='Enrollment')
     total_enrollment = models.IntegerField(default=0)
     is_enrolled = False
-
     def __str__(self):
         return "Name: " + self.name + "," + \
                "Description: " + self.description
-
-
 # Lesson model
 class Lesson(models.Model):
     title = models.CharField(max_length=200, default="title")
     order = models.IntegerField(default=0)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     content = models.TextField()
-
-
 # Enrollment model
 # <HINT> Once a user enrolled a class, an enrollment entry should be created between the user and course
 # And we could use the enrollment to track information such as exam submissions
@@ -93,51 +79,61 @@ class Enrollment(models.Model):
     date_enrolled = models.DateField(default=now)
     mode = models.CharField(max_length=5, choices=COURSE_MODES, default=AUDIT)
     rating = models.FloatField(default=5.0)
-
+# <HINT> Create a Question Model with:
+    # Used to persist question content for a course
+    # Has a One-To-Many (or Many-To-Many if you want to reuse questions) relationship with course
+    # Has a grade point for each question
+    # Has question content
+    # Other fields and methods you would like to design
+#class Question(models.Model):
+    # Foreign key to lesson
+    # question text
+    # question grade/mark
+    # <HINT> A sample model method to calculate if learner get the score of the question
+    #def is_get_score(self, selected_ids):
+    #    all_answers = self.choice_set.filter(is_correct=True).count()
+    #    selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
+    #    if all_answers == selected_correct:
+    #        return True
+    #    else:
+    #        return False
 
 class Question(models.Model):
-    # One-To-Many relationship to Course
-    courses = models.ManyToManyField(Course)
-    # Foreign key to lesson (REMOVED as I wanted to relate questions directly with courses, see task caption)
-    # lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, null=False)
-    # question text
-    question_text = models.CharField(max_length=500, default="This is a sample question.")
-    # question grade/mark
-    marks = models.FloatField(default=1.0)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    title = models.CharField(max_length=550, default="question title")
+    text = models.CharField(max_length=550, default="question text")
+    grade = models.FloatField(default=5.0)
 
-    # A model method to calculate if learner scored points by answering correctly
-    def answered_correctly(self, selected_ids):
-       all_answers = self.choice_set.filter(is_correct=True).count()
-       selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
-       if all_answers == selected_correct:
-           return True
-       else:
-           return False
+    def is_get_score(self, selected_ids):
+        all_answers = self.choice_set.filter(is_correct=True).count()
+        selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
+        if all_answers == selected_correct:
+            return True
+        else:
+            return False
 
-    def __str__(self):
-        return self.question_text
-
-
+#  <HINT> Create a Choice Model with:
+    # Used to persist choice content for a question
+    # One-To-Many (or Many-To-Many if you want to reuse choices) relationship with Question
+    # Choice content
+    # Indicate if this choice of the question is a correct one or not
+    # Other fields and methods you would like to design
+# class Choice(models.Model):
 class Choice(models.Model):
-    # One-To-Many relationship with Question
-    question = models.ForeignKey(Question, models.SET_NULL, null=True)
-    # Choice content / text
-    choice_text = models.CharField(null=False, max_length=50)
-    # Indicates whether the choice is correct or not
-    is_correct = models.BooleanField(default=True)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    text = models.CharField(max_length=550, default="question text")
+    is_correct = models.BooleanField(default=False)
 
-    def __str__(self):
-        return self.choice_text
-
+# <HINT> The submission model
+# One enrollment could have multiple submission
+# One submission could have multiple choices
+# One choice could belong to multiple submissions
+#class Submission(models.Model):
+#    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+#    choices = models.ManyToManyField(Choice)
+#    Other fields and methods you would like to design
+#    chocies = models.ManyToManyField(Choice)
+#    Other fields and methods you would like to design
 class Submission(models.Model):
-    # One enrollment could have multiple submission
-    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
-    # Many-to-Many relationship with choices
-    choices = models.ManyToManyField(Choice)
-    # Time and date metadata
-    date_submitted  = models.DateField(default=now, editable=False)  
-    time = models.TimeField(default=now, editable=False)
-
-    def __str__(self):
-        return f"Submission posted on {self.date_submitted} at {self.time} \
-                for {self.enrollment}"
+   enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+   choices = models.ManyToManyField(Choice)
